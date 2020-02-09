@@ -4,8 +4,8 @@ dotenv.config();
 const express = require('express');
 const app = express();
 
-const companyRoutes = require('./routes/companyRoutes');
-app.use('/api/companies', companyRoutes);
+const filingRoutes = require('./routes/filingRoutes');
+app.use('/api/filings', filingRoutes);
 
 app.use(function (req, res, next) {
     const err = new ExpressError('resource not found', 404);
