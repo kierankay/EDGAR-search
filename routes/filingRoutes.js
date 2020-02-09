@@ -1,5 +1,5 @@
 const express = require('express');
-const Company = require('../models/Filing');
+const Filings = require('../models/Filing');
 
 const router = express.Router();
 
@@ -10,10 +10,18 @@ const router = express.Router();
   ex: GET /api/filings/company/ticker/AAPL
 */
 
-router.get('company/ticker/:ticker', async function (req, res, next) {
+router.get('/', async function (req, res, next) {
     try {
-        let { ticker } = req.params.ticker;
-        let result = await Filings.getFilingsByTicker(ticker);
+        return res.json('hello');
+    } catch (err) {
+        return next(err);
+    }
+});
+
+router.get('/company/ticker/:ticker', async function (req, res, next) {
+    try {
+        let { ticker } = req.params;
+        let result = await Filings.getByCompanyTicker(ticker);
         return res.json(result);
     } catch (err) {
         return next(err);
