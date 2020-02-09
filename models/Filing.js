@@ -2,7 +2,8 @@ const db = require('../db');
 
 class Filings {
     static async getByCompanyTicker(ticker) {
-        let upperticker = ticker.toUpperCase();
+        let upperTicker = ticker.toUpperCase();
+        return upperTicker
     }
 }
 
