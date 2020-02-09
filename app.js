@@ -1,3 +1,5 @@
+const ExpressError = require('./helpers/expressError');
+
 const dotenv = require('dotenv');
 dotenv.config();
 
