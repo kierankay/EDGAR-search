@@ -4,15 +4,14 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 
 class Companies {
-    // static async loadFromFile(filePath) {
-    //     let companies = fs.readFileSync('./data/cik_ticker.csv', 'utf8').toString().split(/\n/).map(e => ({
-    //         'cik': parseInt(e.split('|')[0]),
-    //         'ticker': e.split('|')[1],
-    //         'companyName': e.split('|')[2]
-    //       }));
-    //     Companies.add(companies);
-    //     // console.log(companies);
-    // }
+    static async load(from, to) {
+        let result = await axios.get(from);
+        let resultData = result.data
+        if (!fs.existsSync(`./data/tickers`)) {
+            fs.mkdirSync(`./data/tickers`, { recursive: false });
+        }
+        fs.writeFileSync(to, resultData);
+    }
 
     static async getCik(ticker) {
         let result = await db.query(`
@@ -25,7 +24,7 @@ class Companies {
     }
 
     static async loadFromFile(filePath) {
-        let companies = fs.readFileSync('./data/ticker.txt', 'utf8').toString().split(/\n/).map(e => ({
+        let companies = fs.readFileSync(filePath, 'utf8').toString().split(/\n/).map(e => ({
             'cik': parseInt(e.split(/\s+/)[1]),
             'ticker': e.split(/\s+/)[0]
         }));
