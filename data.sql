@@ -13,5 +13,5 @@ CREATE TABLE filings (
   cik INTEGER NOT NULL REFERENCES companies,
   form_type TEXT NOT NULL,
   date_filed DATE NOT NULL,
-  file_location TEXT NOT NULL
+  file_location TEXT NOT NULL UNIQUE
 );
