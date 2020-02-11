@@ -42,10 +42,15 @@ router.get('/build/filings', async function (req, res, next) {
 router.get('/ticker/:ticker', async function (req, res, next) {
     try {
         let { ticker } = req.params;
-        // let result = await Companies.loadFromFile(ticker);
-        // let result = await Filings.loadFromFile(ticker);
+
+        // get the CIK number from the ticker symbol
         let cik = await Companies.getCik(ticker);
+
+        // get the filing from the CIK number
         let filing = await Filings.get(cik);
+
+        // sort and return as a JSON object
+        filing.sort((a,b) => b.date_filed - a.date_filed);
         let response = { ticker, filings: filing }
         return res.json(response);
     } catch (err) {
