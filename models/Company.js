@@ -7,10 +7,10 @@ class Companies {
     static async load(from, to) {
         let result = await axios.get(from);
         let resultData = result.data
-        if (!fs.existsSync(`./data/tickers`)) {
-            fs.mkdirSync(`./data/tickers`, { recursive: false });
+        if (!fs.existsSync(`to`)) {
+            fs.mkdirSync(`to`, { recursive: false });
         }
-        fs.writeFileSync(to, resultData);
+        fs.writeFileSync(`${to}/tickers.txt`, resultData);
     }
 
     static async getCik(ticker) {
