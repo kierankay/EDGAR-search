@@ -23,24 +23,23 @@ class Filings {
         return filings;
     }
 
-
-    static async buildFilingsURLs() {
-        // Fetch the base JSON directory structure
-        let baseURL = 'https://www.sec.gov/Archives/edgar/full-index/';
+    // Return an array of URLs pointing to quarterly lists of xbrl filing links
+    static async buildFilingsURLs(baseUrl) {
         let currYear = new Date().getFullYear();
-        let buildList = [];
+        let urls = [];
         for (let y = 1993; y < currYear; y++) {
             for (let q = 1; q <= 4; q++) {
-                buildList.push(`${baseURL}${y}/QTR${q}/xbrl.idx`);
+                urls.push(`${baseUrl}${y}/QTR${q}/xbrl.idx`);
             }
         }
         let currQtr = Math.ceil(new Date().getMonth() / 4)
         for (let q = 1; q <= currQtr; q++) {
-            buildList.push(`${baseURL}${currYear}/QTR${q}/xbrl.idx`);
+            urls.push(`${baseUrl}${currYear}/QTR${q}/xbrl.idx`);
         }
-        Filings.fetchAllFilings(buildList);
+        return urls;
     }
 
+    // Fetch all xbrl filings and save them to disk
     static async fetchAllFilings(filingURLs) {
         async function checkNextDir(filingURLs) {
             let filingURL = filingURLs.pop();
@@ -61,15 +60,15 @@ class Filings {
         await checkNextDir(filingURLs)
     }
 
+    // Loads one xbrl into the database
     static async loadFromFile(filePath) {
-        let companyFilings = fs.readFileSync('./data/xbrl.idx', 'utf8').toString().split(/\n/).map(e => ({
+        let companyFilings = fs.readFileSync(filePath, 'utf8').toString().split(/\n/).map(e => ({
             'cik': parseInt(e.split('|')[0]),
             'companyName': e.split('|')[1],
             'fileType': e.split('|')[2],
             'date': e.split('|')[3],
             'fileUrl': e.split('|')[4] ? e.split('|')[4].split(/[/|\-|.]/).reduce((r, e, i) => (i === 2 || i === 5) ? r + e + '/' : (i === 3 || i === 4) ? r + e : r + '', '/') : 0
         }));
-        // console.log(companyFilings);
         this.add(companyFilings);
     }
 
