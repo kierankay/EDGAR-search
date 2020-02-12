@@ -63,8 +63,7 @@ router.get('/ticker/:ticker', async function (req, res, next) {
         // sort and return as a JSON object
         forms.sort((a, b) => b.date_filed - a.date_filed);
         let response = { ticker, forms }
-        let namedForms = await Forms.getFormNames(forms, baseUrl);
-        await Forms.updateFormFileNames(namedForms);
+        Forms.getAndUpdateFormFileNames(forms, baseUrl);
         return res.json(response);
     } catch (err) {
         return next(err);
@@ -75,11 +74,18 @@ router.get('/ticker/:ticker', async function (req, res, next) {
 router.get('/:id', async function (req, res, next) {
     try {
         let id = req.params.id;
-        let filing = await Forms.getById(id);
-        if (filing.file_url === null) {
-            return res.json({ "message": "file not found" });
+        let form = await Forms.getById(id);
+        if (form.form_file_name === null) {
+            let updatedFormArr = await Forms.getFormNames([form], baseUrl);
+            let updatedForm = updatedFormArr[0];
+            if (updatedForm.form_file_name === null) {
+                let url = `${baseUrl}${form.form_file_path}`
+                return res.redirect(url)
+            } else {
+                Forms.updateFormFileNames(updatedFormArr);
+            }
         }
-        let url = `${baseXbrlUrl}${filing.file_location}${filing.file_url}`
+        let url = `${baseXbrlUrl}${form.form_file_path}${form.form_file_name}`
         return res.redirect(url);
     } catch (err) {
         next(err)
