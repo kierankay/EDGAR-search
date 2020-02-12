@@ -75,16 +75,24 @@ router.get('/:id', async function (req, res, next) {
     try {
         let id = req.params.id;
         let form = await Forms.getById(id);
-        if (form.form_file_name === null) {
+        let formNameIsNull = form.form_file_name === null;
+        let formDateIsNull = form.date_last_searched === null;
+        // If the form file hasn't been searched before
+        if (formNameIsNull && formDateIsNull) {
             let updatedFormArr = await Forms.getFormNames([form], baseUrl);
             let updatedForm = updatedFormArr[0];
+            Forms.updateFormFileNames(updatedFormArr);
             if (updatedForm.form_file_name === null) {
                 let url = `${baseUrl}${form.form_file_path}`
                 return res.redirect(url)
-            } else {
-                Forms.updateFormFileNames(updatedFormArr);
             }
         }
+        // If the form file has been searched but wasn't found
+        if (formNameIsNull && !formDateIsNull) {
+            let url = `${baseUrl}${form.form_file_path}`
+            return res.redirect(url)
+        }
+        // If the form has been found
         let url = `${baseXbrlUrl}${form.form_file_path}${form.form_file_name}`
         return res.redirect(url);
     } catch (err) {
