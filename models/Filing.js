@@ -131,28 +131,31 @@ class Forms {
         }
     }
 
-    // Update an array of company form data
-    // with the the form name
+    // Copy an array of forms before mutating it to fetch form file names
+    // Returns the array with form file names included
     static async getFormNames(formsArray, baseArchiveUrl) {
         let unNamedForms = formsArray.slice();
         let namedForms = await this.getNextFormName(unNamedForms, baseArchiveUrl);
         return namedForms;
     }
 
-    // 
+    // Update an array of company form data
+    // with each form's file name
     static async getNextFormName(unNamedForms, baseArchiveUrl, namedForms = []) {
         let formData = unNamedForms.pop();
         let formType = formData.form_type.split(/[-/]/).join('');
         let formPath = formData.form_file_path;
         let formName = formData.form_file_name;
 
-        // If a form's filename is nullß
-        // then fetch it from the server and return it
+        // If a form's file name is null
+        // then fetch it from the server and add it (if found) or null to the form
         if (formName === null || formName === '{}') {
             let folderStructure = await Forms.getFormFileDirectory(baseArchiveUrl, formPath);
             let formFileName = await Forms.findForm(folderStructure, formPath, formType);
             formData.form_file_name = formFileName;
-            await timeout(baseTimeoutMs);
+            if (unNamedForms.length > 0) {
+                await timeout(baseTimeoutMs);
+            }
         }
 
         namedForms.push(formData);
@@ -165,23 +168,27 @@ class Forms {
         }
     }
 
+    // Update an array of forms' file names to the database
     static async updateFormFileNames(namedForms) {
         for (let form of namedForms) {
             await Forms.updateFormFileName(form.id, form.form_file_name)
         }
     }
 
-    // Synchronously get and update form file names to the database
+    // Get and update form file names to the database
+    // Used to perform this synchronous task asynchronously
     static async getAndUpdateFormFileNames(forms, baseUrl) {
         let namedForms = await Forms.getFormNames(forms, baseUrl);
         Forms.updateFormFileNames(namedForms);
     }
 
+    // Fetch the form's directory structure from EDGAR
     static async getFormFileDirectory(baseArchiveUrl, formPath) {
         let result = await axios.get(`${baseArchiveUrl}${formPath}index.json`);
         return result.data
     }
 
+    // Find the form's file name from the directory structure
     static async findForm(folderStructure, baseArchiveUrl, formType) {
         let forms = folderStructure.directory.item;
         let url = forms.filter(function (e) {
