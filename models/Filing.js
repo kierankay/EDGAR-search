@@ -2,8 +2,9 @@ const db = require('../db');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs');
+const timeout = require('../helpers/timeout')
 
-class Filings {
+class Forms {
 
     // Backup function to load filings directly from SEC website
     // Used in case our library is missing something. We should log the use of this function.
@@ -24,82 +25,165 @@ class Filings {
     }
 
     // Return an array of URLs pointing to quarterly lists of xbrl filing links
-    static async buildFilingsURLs(baseUrl) {
+    static async buildFormListURLs(baseUrl) {
         let currYear = new Date().getFullYear();
         let urls = [];
+
         for (let y = 1993; y < currYear; y++) {
             for (let q = 1; q <= 4; q++) {
                 urls.push(`${baseUrl}${y}/QTR${q}/xbrl.idx`);
             }
         }
+
         let currQtr = Math.ceil(new Date().getMonth() / 4)
         for (let q = 1; q <= currQtr; q++) {
             urls.push(`${baseUrl}${currYear}/QTR${q}/xbrl.idx`);
         }
+
         return urls;
     }
 
-    // Fetch all xbrl filings and save them to disk
-    static async fetchAllFilings(filingURLs) {
-        async function checkNextDir(filingURLs) {
-            let filingURL = filingURLs.pop();
-            let filingDataObj = await axios.get(filingURL);
-            let filingData = filingDataObj.data
+    // Fetch all lists of xbrl forms filed from 1993 to present
+    // and save them to disk
+    static async getFormLists(formListUrls) {
+        async function checkNextDir(formListUrls) {
+            let formUrl = formListUrls.pop();
+            let formDataObj = await axios.get(formUrl);
+            let formData = formDataObj.data
+
             if (!fs.existsSync(`./data/xbrls`)) {
                 fs.mkdirSync(`./data/xbrls`, { recursive: false });
             }
-            fs.writeFileSync(`./data/xbrls/${filingURL.split('/')[6] + '-' + filingURL.split('/')[7] + '-' + filingURL.split('/')[8]}`, filingData);
+
+            fs.writeFileSync(`./data/xbrls/${formUrl.split('/')[6] + '-' + formUrl.split('/')[7] + '-' + filingURL.split('/')[8]}`, formData);
             await timeout(3000);
-            if (filingURLs.length > 0) {
-                await checkNextDir(filingURLs)
+
+            if (formListUrls.length > 0) {
+                await checkNextDir(formListUrls)
             }
         }
-        async function timeout(ms) {
-            return await new Promise(resolve => setTimeout(resolve, ms));
-        }
+
         await checkNextDir(filingURLs)
     }
 
-    // Loads one xbrl into the database
-    static async loadFromFile(filePath) {
-        let companyFilings = fs.readFileSync(filePath, 'utf8').toString().split(/\n/).map(e => ({
+    // Load one xbrl form list from the drive
+    static async loadFormList(filePath) {
+        let companyForms = fs.readFileSync(filePath, 'utf8').toString().split(/\n/).map(e => ({
             'cik': parseInt(e.split('|')[0]),
             'companyName': e.split('|')[1],
             'fileType': e.split('|')[2],
             'date': e.split('|')[3],
             'fileUrl': e.split('|')[4] ? e.split('|')[4].split(/[/|\-|.]/).reduce((r, e, i) => (i === 2 || i === 5) ? r + e + '/' : (i === 3 || i === 4) ? r + e : r + '', '/') : 0
         }));
-        this.add(companyFilings);
+        return companyForms;
+    }
+
+    static async add(file) {
+        file.forEach((e) => (this.addOne(e)));
     }
 
     static async addOne(file) {
         try {
-            let { cik, fileType, date, fileUrl } = file
+            let { cik, formType, date, formPath } = file
             if (!isNaN(cik)) {
                 let result = await db.query(`
-            INSERT INTO filings
-            (cik, form_type, date_filed, file_location)
-            VALUES ($1, $2, $3, $4)`, [cik, fileType, date, fileUrl]
+                INSERT INTO forms
+                (cik, form_type, date_filed, form_file_path)
+                VALUES ($1, $2, $3, $4)`, [cik, formType, date, formPath]
                 );
             }
         } catch (err) {
-            console.log(file, err.detail);
+            console.log(err.detail);
         }
     }
 
-    static async add(file) {
-        file.forEach((e) => (Filings.addOne(e)));
-    }
-
-    static async get(cik) {
+    static async getByCik(cik) {
         let result = await db.query(`
         SELECT *
-        FROM filings
+        FROM forms
         WHERE cik = $1
         `, [cik]);
         return result.rows;
     }
 
+    static async getById(id) {
+        let result = await db.query(`
+        SELECT *
+        FROM forms
+        WHERE id = $1
+        `, [id]);
+        return result.rows[0];
+    }
+
+    static async updateFormFileName(id, fileUrl) {
+        try {
+            let result = await db.query(`
+        UPDATE forms
+        SET form_file_name = $2
+        WHERE id = $1
+        `, [id, fileUrl]);
+            return { "message": "success" }
+        } catch (err) {
+            console.log(err.detail);
+        }
+    }
+
+    // Update an array of company form data
+    // with the the form name
+    static async getFormNames(formsArray, baseArchiveUrl) {
+        let unNamedForms = formsArray.slice();
+        let namedForms = [];
+        await getNextForm(unNamedForms, baseArchiveUrl)
+        return namedForms;
+
+        async function getNextForm(unNamedForms) {
+            let formData = unNamedForms.pop();
+            let formType = formData.form_type.split(/[-/]/).join('');
+            let formPath = formData.form_path;
+            let formId = formData.id;
+            let formName = formData.form_name;
+            if (formName === null || formName === '{}') {
+                let folderStructure = await Forms.getFileFolder(baseArchiveUrl, formPath);
+                let formUrl = await Forms.findForm(folderStructure, formPath, formType);
+                
+                formName = `${formUrl}`
+                formData.Name = formName;
+
+                namedForms.push(formData);
+            }
+            
+            if (unNamedForms.length > 0) {
+                await getNextForm(unNamedForms);
+            }
+        }
+    }
+
+    static async updateFormFileNames(namedForms) {
+        for (let form of namedForms) {
+            await Forms.updateFormName(form.id, form.name)
+        }
+    }
+
+    static async getFileFolder(baseArchiveUrl, formPath) {
+        let result = await axios.get(`${baseArchiveUrl}${formPath}index.json`);
+        return result.data
+    }
+
+    static async findForm(folderStructure, baseArchiveUrl, formType) {
+        let forms = folderStructure.directory.item;
+        let url = forms.filter(function (e) {
+            let lowerFormType = formType.toLowerCase();
+            let ext = e.name.split('.');
+            let extMatch = ext[ext.length - 1]
+
+            let name = e.name.split('-').join('');
+            let nameMatch = name.search(`${lowerFormType.split('-').join('')}`);
+            if (extMatch === 'htm' && nameMatch !== -1) {
+                return `https://www.sec.gov/ix?doc=/Archives/edgar/data${baseArchiveUrl}${e.name}`
+            }
+        })
+        return url[0] ? url[0].name : null;
+    }
 }
 
-module.exports = Filings;
+module.exports = Forms;
