@@ -135,7 +135,7 @@ class Forms {
     // with the the form name
     static async getFormNames(formsArray, baseArchiveUrl) {
         let unNamedForms = formsArray.slice();
-        let namedForms = await this.getNextForm(unNamedForms, baseArchiveUrl);
+        let namedForms = await this.getNextFormName(unNamedForms, baseArchiveUrl);
         return namedForms;
     }
 
@@ -146,7 +146,7 @@ class Forms {
         let formPath = formData.form_file_path;
         let formName = formData.form_file_name;
 
-        // If a form's filename is null
+        // If a form's filename is nullß
         // then fetch it from the server and return it
         if (formName === null || formName === '{}') {
             let folderStructure = await Forms.getFormFileDirectory(baseArchiveUrl, formPath);
@@ -158,7 +158,7 @@ class Forms {
         namedForms.push(formData);
 
         if (unNamedForms.length > 0) {
-            let response = await this.getNextForm(unNamedForms, baseArchiveUrl, namedForms);
+            let response = await this.getNextFormName(unNamedForms, baseArchiveUrl, namedForms);
             return response;
         } else {
             return namedForms;
