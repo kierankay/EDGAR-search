@@ -13,6 +13,6 @@ CREATE TABLE forms (
   cik INTEGER NOT NULL REFERENCES companies,
   form_type TEXT NOT NULL,
   date_filed DATE NOT NULL,
-  form_path TEXT NOT NULL UNIQUE,
-  form_name TEXT
+  form_file_path TEXT NOT NULL UNIQUE,
+  form_file_name TEXT
 );
