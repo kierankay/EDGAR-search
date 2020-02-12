@@ -5,6 +5,7 @@ const fs = require('fs');
 const timeout = require('../helpers/timeout')
 
 let baseXbrlListSavePath = './data/xbrls';
+let baseTimeoutMs = 1000;
 
 class Forms {
 
@@ -58,17 +59,17 @@ class Forms {
             }
 
             fs.writeFileSync(`${baseXbrlListSavePath}/${formUrl.split('/')[6] + '-' + formUrl.split('/')[7] + '-' + filingURL.split('/')[8]}`, formData);
-            await timeout(3000);
+            await timeout(baseTimeoutMs);
 
             if (formListUrls.length > 0) {
                 await checkNextDir(formListUrls)
             }
         }
 
-        await checkNextDir(filingURLs)
+        await checkNextDir(filingURLs);
     }
 
-    // Load one xbrl form list from the drive
+    // Load one xbrl form list from the disk
     static async loadFormList(filePath) {
         let companyForms = fs.readFileSync(filePath, 'utf8').toString().split(/\n/).map(e => ({
             'cik': parseInt(e.split('|')[0]),
@@ -138,7 +139,8 @@ class Forms {
         return namedForms;
     }
 
-    static async getNextForm(unNamedForms, baseArchiveUrl, namedForms = []) {
+    // 
+    static async getNextFormName(unNamedForms, baseArchiveUrl, namedForms = []) {
         let formData = unNamedForms.pop();
         let formType = formData.form_type.split(/[-/]/).join('');
         let formPath = formData.form_file_path;
@@ -147,11 +149,10 @@ class Forms {
         // If a form's filename is null
         // then fetch it from the server and return it
         if (formName === null || formName === '{}') {
-            let folderStructure = await Forms.getFileDirectory(baseArchiveUrl, formPath);
+            let folderStructure = await Forms.getFormFileDirectory(baseArchiveUrl, formPath);
             let formFileName = await Forms.findForm(folderStructure, formPath, formType);
-            console.log(formFileName);
             formData.form_file_name = formFileName;
-            await timeout(1000);
+            await timeout(baseTimeoutMs);
         }
 
         namedForms.push(formData);
@@ -170,12 +171,13 @@ class Forms {
         }
     }
 
+    // Synchronously get and update form file names to the database
     static async getAndUpdateFormFileNames(forms, baseUrl) {
         let namedForms = await Forms.getFormNames(forms, baseUrl);
         Forms.updateFormFileNames(namedForms);
     }
 
-    static async getFileDirectory(baseArchiveUrl, formPath) {
+    static async getFormFileDirectory(baseArchiveUrl, formPath) {
         let result = await axios.get(`${baseArchiveUrl}${formPath}index.json`);
         return result.data
     }
