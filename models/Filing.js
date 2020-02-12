@@ -4,6 +4,8 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const timeout = require('../helpers/timeout')
 
+let baseXbrlListSavePath = './data/xbrls';
+
 class Forms {
 
     // Backup function to load filings directly from SEC website
@@ -51,11 +53,11 @@ class Forms {
             let formDataObj = await axios.get(formUrl);
             let formData = formDataObj.data
 
-            if (!fs.existsSync(`./data/xbrls`)) {
-                fs.mkdirSync(`./data/xbrls`, { recursive: false });
+            if (!fs.existsSync(baseXbrlListSavePath)) {
+                fs.mkdirSync(baseXbrlListSavePath, { recursive: false });
             }
 
-            fs.writeFileSync(`./data/xbrls/${formUrl.split('/')[6] + '-' + formUrl.split('/')[7] + '-' + filingURL.split('/')[8]}`, formData);
+            fs.writeFileSync(`${baseXbrlListSavePath}/${formUrl.split('/')[6] + '-' + formUrl.split('/')[7] + '-' + filingURL.split('/')[8]}`, formData);
             await timeout(3000);
 
             if (formListUrls.length > 0) {
@@ -147,7 +149,7 @@ class Forms {
         if (formName === null || formName === '{}') {
             let folderStructure = await Forms.getFileDirectory(baseArchiveUrl, formPath);
             let formFileName = await Forms.findForm(folderStructure, formPath, formType);
-
+            console.log(formFileName);
             formData.form_file_name = formFileName;
             await timeout(1000);
         }
@@ -188,7 +190,7 @@ class Forms {
             let name = e.name.split('-').join('');
             let nameMatch = name.search(`${lowerFormType.split('-').join('')}`);
             if (extMatch === 'htm' && nameMatch !== -1) {
-                return `https://www.sec.gov/ix?doc=/Archives/edgar/data${baseArchiveUrl}${e.name}`
+                return true;
             }
         })
         return url[0] ? url[0].name : null;
