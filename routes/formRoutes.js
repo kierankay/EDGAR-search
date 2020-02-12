@@ -11,96 +11,137 @@ let baseTickerSavePath = './data/tickers';
 
 const router = express.Router();
 
-// COMPANY ROUTES
+// FORM ROUTES
 
 /*
-  Fetch a filings for a company by stock ticker
-  ex: GET /api/filings/company/ticker/AAPL
+	Fetch lists of stock tickers by CIK, save to disk,
+	and load them into the database
+	ex: GET /api/forms/build/tickers
 */
 
 router.get('/build/tickers', async function (req, res, next) {
-    try {
-        let loadFrom = baseTickerUrl;
-        let saveTo = baseTickerSavePath;
-        // fetch tickers from SEC.gov
-        await Companies.load(loadFrom, saveTo);
+	try {
+		let loadFrom = baseTickerUrl;
+		let saveTo = baseTickerSavePath;
+		// fetch tickers from SEC.gov
+		await Companies.load(loadFrom, saveTo);
 
-        // parse and load into database
-        let companyFilings = await Companies.loadFromFile(saveTo);
-        await Forms.add(companyFilings);
-        return res.json({ "message": "built tickers" });
-    } catch (err) {
-        next(err);
-    }
+		// parse and load into database
+		let companyFilings = await Companies.loadFromFile(saveTo);
+		await Forms.add(companyFilings);
+		return res.json({ "message": "built tickers" });
+	} catch (err) {
+		next(err);
+	}
 });
 
-router.get('/build/filings', async function (req, res, next) {
-    try {
-        let baseDataFolder = baseXbrlListSavePath;
-        let formListUrls = await Forms.buildFormListUrls(baseUrl);
+/*
+	Fetch lists of filed forms from EDGAR
+	Save them locally, and parse them into the forms table
+	ex: GET /api/forms/build/forms
+*/
 
-        // build all xbrl lists at ./data/xbrls
-        // await Forms.getFormLists(formListUrls);
+router.get('/build/forms', async function (req, res, next) {
+	try {
+		let baseDataFolder = baseXbrlListSavePath;
+		let formListUrls = await Forms.buildFormListUrls(baseUrl);
 
-        let files = fs.readdirSync(baseDataFolder);
-        for (let formList of files) {
-            let companyForms = await Forms.loadFormList(`${baseDataFolder}/${formList}`);
-            await Forms.add(companyForms);
-        }
-        return res.json({ "message": "built forms" });
-    } catch (err) {
-        next(err)
-    }
+		// build all xbrl lists at ./data/xbrls
+		// await Forms.getFormLists(formListUrls);
+
+		let files = fs.readdirSync(baseDataFolder);
+		for (let formList of files) {
+			let companyForms = await Forms.loadFormList(`${baseDataFolder}/${formList}`);
+			await Forms.add(companyForms);
+		}
+		return res.json({ "message": "built forms" });
+	} catch (err) {
+		next(err)
+	}
 });
+
+/*
+	Return an array of forms filed based on ticker symbol
+	ex: GET /api/forms/ticker/aapl
+
+	Response:
+	{
+		"ticker": "aapl",
+		"forms": [
+			{
+				"id": 362965,
+				"cik": 320193,
+				"form_type": "10-Q",
+				"date_filed": "2020-01-29T08:00:00.000Z",
+				"form_file_path": "/320193/000032019320000010/",
+				"form_file_name": "a10-qexhibit31112282019.htm",
+				"date_last_searched": null
+			},
+		]
+	}
+*/
 
 router.get('/ticker/:ticker', async function (req, res, next) {
-    try {
-        let { ticker } = req.params;
+	try {
+		let { ticker } = req.params;
 
-        // get the CIK number from the ticker symbol
-        let cik = await Companies.getCik(ticker);
+		// get the CIK number from the ticker symbol
+		let cik = await Companies.getCik(ticker);
 
-        // get the filing from the CIK number
-        let forms = await Forms.getByCik(cik);
+		// get the filing from the CIK number
+		let forms = await Forms.getByCik(cik);
 
-        // sort and return as a JSON object
-        forms.sort((a, b) => b.date_filed - a.date_filed);
-        let response = { ticker, forms }
-        Forms.getAndUpdateFormFileNames(forms, baseUrl);
-        return res.json(response);
-    } catch (err) {
-        return next(err);
-    }
+		// sort and return as a JSON object
+		forms.sort((a, b) => b.date_filed - a.date_filed);
+		let response = { ticker, forms }
+
+		// Get and update form file names to the database
+		Forms.getAndUpdateFormFileNames(forms, baseUrl);
+
+		return res.json(response);
+	} catch (err) {
+		return next(err);
+	}
 });
+
+/*
+	Returns a link to the xbrl view of a financial statement
+	or to the statement's containing folder if no document is found
+	ex: GET /api/forms/362966
+
+	Response:
+	301 Redirect to https://www.sec.gov/ix?doc=/Archives/edgar/data/897723/000110465920007134/tm205870-1_8k.htm
+	302 Redirect to https://www.sec.gov/ix?doc=/Archives/edgar/data/897723/000110465920007134/
+*/
 
 // redirects to financial statement link if first time requested
 router.get('/:id', async function (req, res, next) {
-    try {
-        let id = req.params.id;
-        let form = await Forms.getById(id);
-        let formNameIsNull = form.form_file_name === null;
-        let formDateIsNull = form.date_last_searched === null;
-        // If the form file hasn't been searched before
-        if (formNameIsNull && formDateIsNull) {
-            let updatedFormArr = await Forms.getFormNames([form], baseUrl);
-            let updatedForm = updatedFormArr[0];
-            Forms.updateFormFileNames(updatedFormArr);
-            if (updatedForm.form_file_name === null) {
-                let url = `${baseUrl}${form.form_file_path}`
-                return res.redirect(url)
-            }
-        }
-        // If the form file has been searched but wasn't found
-        if (formNameIsNull && !formDateIsNull) {
-            let url = `${baseUrl}${form.form_file_path}`
-            return res.redirect(url)
-        }
-        // If the form has been found
-        let url = `${baseXbrlUrl}${form.form_file_path}${form.form_file_name}`
-        return res.redirect(url);
-    } catch (err) {
-        next(err)
-    }
+	try {
+		let id = req.params.id;
+		let form = await Forms.getById(id);
+		let formNameIsNull = form.form_file_name === null;
+		let formDateIsNull = form.date_last_searched === null;
+		// If the form file hasn't been searched before
+		if (formNameIsNull && formDateIsNull) {
+			let updatedFormArr = await Forms.getFormNames([form], baseUrl);
+			let updatedForm = updatedFormArr[0];
+			Forms.updateFormFileNames(updatedFormArr);
+			if (updatedForm.form_file_name === null) {
+				let url = `${baseUrl}${form.form_file_path}`
+				return res.redirect(url)
+			}
+		}
+		// If the form file has been searched but wasn't found
+		if (formNameIsNull && !formDateIsNull) {
+			let url = `${baseUrl}${form.form_file_path}`
+			return res.redirect(url)
+		}
+		// If the form has been found
+		let url = `${baseXbrlUrl}${form.form_file_path}${form.form_file_name}`
+		return res.redirect(301, url);
+	} catch (err) {
+		next(err)
+	}
 });
 
 module.exports = router;
