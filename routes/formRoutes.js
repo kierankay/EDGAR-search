@@ -5,6 +5,9 @@ const fs = require('fs');
 
 let baseUrl = 'https://www.sec.gov/Archives/edgar/data';
 let baseXbrlUrl = 'https://www.sec.gov/ix?doc=/Archives/edgar/data';
+let baseXbrlListSavePath = './data/xbrls';
+let baseTickerUrl = 'https://www.sec.gov/include/ticker.txt';
+let baseTickerSavePath = './data/tickers';
 
 const router = express.Router();
 
@@ -17,8 +20,8 @@ const router = express.Router();
 
 router.get('/build/tickers', async function (req, res, next) {
     try {
-        let loadFrom = 'https://www.sec.gov/include/ticker.txt';
-        let saveTo = './data/tickers';
+        let loadFrom = baseTickerUrl;
+        let saveTo = baseTickerSavePath;
         // fetch tickers from SEC.gov
         await Companies.load(loadFrom, saveTo);
 
@@ -33,7 +36,7 @@ router.get('/build/tickers', async function (req, res, next) {
 
 router.get('/build/filings', async function (req, res, next) {
     try {
-        let baseDataFolder = './data/xbrls'
+        let baseDataFolder = baseXbrlListSavePath;
         let formListUrls = await Forms.buildFormListUrls(baseUrl);
 
         // build all xbrl lists at ./data/xbrls
