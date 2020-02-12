@@ -14,5 +14,6 @@ CREATE TABLE forms (
   form_type TEXT NOT NULL,
   date_filed DATE NOT NULL,
   form_file_path TEXT NOT NULL UNIQUE,
-  form_file_name TEXT
+  form_file_name TEXT,
+  date_last_searched DATE
 );
