@@ -119,9 +119,9 @@ class Forms {
         try {
             let result = await db.query(`
         UPDATE forms
-        SET form_file_name = $2
+        SET form_file_name = $2, date_last_searched = $3
         WHERE id = $1
-        `, [id, fileUrl]);
+        `, [id, fileUrl, new Date()]);
             return { "message": "success" }
         } catch (err) {
             console.log(err.detail);
