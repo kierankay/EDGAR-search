@@ -132,39 +132,48 @@ class Forms {
     // with the the form name
     static async getFormNames(formsArray, baseArchiveUrl) {
         let unNamedForms = formsArray.slice();
-        let namedForms = [];
-        await getNextForm(unNamedForms, baseArchiveUrl)
+        let namedForms = await this.getNextForm(unNamedForms, baseArchiveUrl);
         return namedForms;
+    }
 
-        async function getNextForm(unNamedForms) {
-            let formData = unNamedForms.pop();
-            let formType = formData.form_type.split(/[-/]/).join('');
-            let formPath = formData.form_path;
-            let formId = formData.id;
-            let formName = formData.form_name;
-            if (formName === null || formName === '{}') {
-                let folderStructure = await Forms.getFileFolder(baseArchiveUrl, formPath);
-                let formUrl = await Forms.findForm(folderStructure, formPath, formType);
-                
-                formName = `${formUrl}`
-                formData.Name = formName;
+    static async getNextForm(unNamedForms, baseArchiveUrl, namedForms = []) {
+        let formData = unNamedForms.pop();
+        let formType = formData.form_type.split(/[-/]/).join('');
+        let formPath = formData.form_file_path;
+        let formName = formData.form_file_name;
 
-                namedForms.push(formData);
-            }
-            
-            if (unNamedForms.length > 0) {
-                await getNextForm(unNamedForms);
-            }
+        // If a form's filename is null
+        // then fetch it from the server and return it
+        if (formName === null || formName === '{}') {
+            let folderStructure = await Forms.getFileDirectory(baseArchiveUrl, formPath);
+            let formFileName = await Forms.findForm(folderStructure, formPath, formType);
+
+            formData.form_file_name = formFileName;
+            await timeout(1000);
+        }
+
+        namedForms.push(formData);
+
+        if (unNamedForms.length > 0) {
+            let response = await this.getNextForm(unNamedForms, baseArchiveUrl, namedForms);
+            return response;
+        } else {
+            return namedForms;
         }
     }
 
     static async updateFormFileNames(namedForms) {
         for (let form of namedForms) {
-            await Forms.updateFormName(form.id, form.name)
+            await Forms.updateFormFileName(form.id, form.form_file_name)
         }
     }
 
-    static async getFileFolder(baseArchiveUrl, formPath) {
+    static async getAndUpdateFormFileNames(forms, baseUrl) {
+        let namedForms = await Forms.getFormNames(forms, baseUrl);
+        Forms.updateFormFileNames(namedForms);
+    }
+
+    static async getFileDirectory(baseArchiveUrl, formPath) {
         let result = await axios.get(`${baseArchiveUrl}${formPath}index.json`);
         return result.data
     }
