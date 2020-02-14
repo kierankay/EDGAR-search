@@ -6,8 +6,8 @@ Requirements:
 - NPM
 
 To install the package:
-1. Create a new postgres database named 'edgar-search'
-2. Import the data.sql file into the edgar-search database (CLI: pg edgar-search < data.sql)
+1. Create a new postgres database named 'edgar_search'
+2. Import the data.sql file into the edgar_search database (CLI: pg edgar_search < data.sql)
 3. Install the NPM package (CLI: npm install)
 
 To build the search engine dataset:
