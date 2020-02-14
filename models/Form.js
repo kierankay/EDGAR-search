@@ -4,7 +4,7 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const timeout = require('../helpers/timeout');
 
-const {baseTimeoutMs} = require('../constants');
+const { baseTimeoutMs } = require('../constants');
 
 class Forms {
 
@@ -82,6 +82,7 @@ class Forms {
     static async getFormNames(formsArray, baseArchiveUrl) {
         let unNamedForms = formsArray.slice();
         let namedForms = await getNextFormName(unNamedForms, baseArchiveUrl);
+        console.log(namedForms);
         return namedForms;
 
         async function getNextFormName(unNamedForms, baseArchiveUrl, namedForms = []) {
@@ -94,7 +95,7 @@ class Forms {
             // then fetch it from the server and add it (if found) or null to the form
             if (formName === null || formName === '{}') {
                 let folderStructure = await Forms.getFormFileDirectory(baseArchiveUrl, formPath);
-                let formFileName = await Forms.findForm(folderStructure, formPath, formType);
+                let formFileName = await Forms.findForm(folderStructure, formType);
                 formData.form_file_name = formFileName;
                 if (unNamedForms.length > 0) {
                     await timeout(baseTimeoutMs);
@@ -102,6 +103,7 @@ class Forms {
             }
 
             namedForms.push(formData);
+            console.log(formData);
 
             if (unNamedForms.length > 0) {
                 let response = await getNextFormName(unNamedForms, baseArchiveUrl, namedForms);
@@ -158,7 +160,7 @@ class Forms {
                 (cik, form_type, date_filed, form_file_path)
                 VALUES ($1, $2, $3, $4)`, [cik, formType, date, formPath]
                 );
-                return {'message': `${cik} inserted`};
+                return { 'message': `${cik} inserted` };
             }
         } catch (err) {
             console.log(err.detail);
@@ -166,21 +168,29 @@ class Forms {
     }
 
     static async getByCik(cik) {
-        let result = await db.query(`
+        try {
+            let result = await db.query(`
         SELECT *
         FROM forms
         WHERE cik = $1
         `, [cik]);
-        return result.rows;
+            return result.rows;
+        } catch (err) {
+            console.log(err.detail);
+        }
     }
 
     static async getById(id) {
-        let result = await db.query(`
+        try {
+            let result = await db.query(`
         SELECT *
         FROM forms
         WHERE id = $1
         `, [id]);
-        return result.rows[0];
+            return result.rows[0];
+        } catch (err) {
+            console.log(err.detail);
+        }
     }
 
     static async updateFormFileName(id, fileUrl) {
