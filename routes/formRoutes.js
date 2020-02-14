@@ -3,7 +3,7 @@ const Forms = require('../models/Filing');
 const Companies = require('../models/Company');
 const fs = require('fs');
 
-let baseUrl = 'https://www.sec.gov/Archives/edgar/data';
+let baseArchiveUrl = 'https://www.sec.gov/Archives/edgar/data';
 let baseXbrlUrl = 'https://www.sec.gov/ix?doc=/Archives/edgar/data';
 let baseXbrlListSavePath = './data/xbrls';
 let baseTickerUrl = 'https://www.sec.gov/include/ticker.txt';
@@ -43,16 +43,15 @@ router.get('/build/tickers', async function (req, res, next) {
 
 router.get('/build/forms', async function (req, res, next) {
 	try {
-		let baseDataFolder = baseXbrlListSavePath;
-		let formListUrls = await Forms.buildFormListUrls(baseUrl);
+		let formListUrls = await Forms.buildFormListUrls(baseArchiveUrl);
 
 		// build all xbrl lists at ./data/xbrls
-		// await Forms.getFormLists(formListUrls);
+		// await Forms.getFormLists(formListUrls, baseXbrlListSavePath);
 
 		let files = fs.readdirSync(baseDataFolder);
 		for (let formList of files) {
-			let companyForms = await Forms.loadFormList(`${baseDataFolder}/${formList}`);
-			await Forms.add(companyForms);
+			let companyForms = await Forms.loadFormList(formList, baseXbrlListSavePath);
+			companyForms.forEach((form) => (Forms.addOne(form)));
 		}
 		return res.json({ "message": "built forms" });
 	} catch (err) {
@@ -96,7 +95,7 @@ router.get('/ticker/:ticker', async function (req, res, next) {
 		let response = { ticker, forms }
 
 		// Get and update form file names to the database
-		Forms.getAndUpdateFormFileNames(forms, baseUrl);
+		Forms.getAndUpdateFormFileNames(forms, baseArchiveUrl);
 
 		return res.json(response);
 	} catch (err) {
@@ -121,22 +120,26 @@ router.get('/:id', async function (req, res, next) {
 		let form = await Forms.getById(id);
 		let formNameIsNull = form.form_file_name === null;
 		let formDateIsNull = form.date_last_searched === null;
-		// If the form file hasn't been searched before
+
+		// If the form file hasn't been searched before, then check for the file name
+		// If the file name cannot be found then redirect to the parent folder URL
 		if (formNameIsNull && formDateIsNull) {
-			let updatedFormArr = await Forms.getFormNames([form], baseUrl);
+			let updatedFormArr = await Forms.getFormNames([form], baseArchiveUrl);
 			let updatedForm = updatedFormArr[0];
-			Forms.updateFormFileNames(updatedFormArr);
+			Forms.updateFormFileName(updatedForm.id, updatedForm.form_file_name);
 			if (updatedForm.form_file_name === null) {
-				let url = `${baseUrl}${form.form_file_path}`
+				let url = `${baseArchiveUrl}${form.form_file_path}`
 				return res.redirect(url)
 			}
 		}
 		// If the form file has been searched but wasn't found
+		// Then redirect to the parent folder URL
 		if (formNameIsNull && !formDateIsNull) {
-			let url = `${baseUrl}${form.form_file_path}`
+			let url = `${baseArchiveUrl}${form.form_file_path}`
 			return res.redirect(url)
 		}
 		// If the form has been found
+		// Then redirect to the form URL
 		let url = `${baseXbrlUrl}${form.form_file_path}${form.form_file_name}`
 		return res.redirect(301, url);
 	} catch (err) {
