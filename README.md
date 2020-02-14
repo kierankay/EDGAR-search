@@ -13,7 +13,7 @@ To install the package:
 To build the search engine dataset:
 1. Run the npm package (npm start)
 2. Build the ticker data table (visit: localhost:3000/api/forms/build/tickers)
-3. Build the form data table (visit: localhost:3000/api/forms/build/tickers)
+3. Build the form data table (visit: localhost:3000/api/forms/build/forms)
 
 Search API endpoints:
 1. See a list of all forms from a company by its ticker: (visit: localhost:3000/api/forms/ticker/<ticker>)
