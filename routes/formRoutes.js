@@ -119,7 +119,6 @@ router.get('/:id', async function (req, res, next) {
 		let form = await Forms.getById(id);
 		let formNameIsNull = form.form_file_name === null;
 		let formDateIsNull = form.date_last_searched === null;
-
 		// If the form file hasn't been searched before, then check for the file name
 		// If the file name cannot be found then redirect to the parent folder URL
 		if (formNameIsNull && formDateIsNull) {
