@@ -85,17 +85,17 @@ router.get('/ticker/:ticker', async function (req, res, next) {
 
 		// get the CIK number from the ticker symbol
 		let cik = await Companies.getCik(ticker);
-
+		if (cik === undefined) {
+			return res.json({'error': 'not a valid ticker symbol'})
+		}
 		// get the filing from the CIK number
 		let forms = await Forms.getByCik(cik);
 
 		// sort and return as a JSON object
 		forms.sort((a, b) => b.date_filed - a.date_filed);
 		let response = { ticker, forms }
-
 		// Get and update form file names to the database
 		Forms.getAndUpdateFormFileNames(forms, baseArchiveUrl);
-
 		return res.json(response);
 	} catch (err) {
 		return next(err);
