@@ -82,7 +82,6 @@ class Forms {
     static async getFormNames(formsArray, baseArchiveUrl) {
         let unNamedForms = formsArray.slice();
         let namedForms = await getNextFormName(unNamedForms, baseArchiveUrl);
-        console.log(namedForms);
         return namedForms;
 
         async function getNextFormName(unNamedForms, baseArchiveUrl, namedForms = []) {
@@ -103,7 +102,6 @@ class Forms {
             }
 
             namedForms.push(formData);
-            console.log(formData);
 
             if (unNamedForms.length > 0) {
                 let response = await getNextFormName(unNamedForms, baseArchiveUrl, namedForms);
