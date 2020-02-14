@@ -3,6 +3,7 @@ const axios = require('axios');
 const fs = require('fs');
 
 class Companies {
+    
     static async load(from, to) {
         let result = await axios.get(from);
         let resultData = result.data
@@ -11,6 +12,22 @@ class Companies {
         }
         fs.writeFileSync(`${to}/tickers.txt`, resultData);
     }
+
+    static async loadFromFile(filePath) {
+        let companies = fs.readFileSync(filePath, 'utf8').toString().split(/\n/).map(e => ({
+            'cik': parseInt(e.split(/\s+/)[1]),
+            'ticker': e.split(/\s+/)[0]
+        }));
+        Companies.add(companies);
+    }
+
+    static async add(companies) {
+        companies.forEach((e) => (Companies.addOne(e)));
+    }
+
+    //
+    // DATABASE METHODS
+    //
 
     static async getCik(ticker) {
         let result = await db.query(`
@@ -22,14 +39,6 @@ class Companies {
         return cik;
     }
 
-    static async loadFromFile(filePath) {
-        let companies = fs.readFileSync(filePath, 'utf8').toString().split(/\n/).map(e => ({
-            'cik': parseInt(e.split(/\s+/)[1]),
-            'ticker': e.split(/\s+/)[0]
-        }));
-        Companies.add(companies);
-    }
-
     static async addOne(company) {
         let { cik, ticker } = company
         let result = await db.query(`
@@ -37,10 +46,6 @@ class Companies {
         (cik, ticker)
         VALUES ($1, $2)`, [cik, ticker]
         );
-    }
-
-    static async add(companies) {
-        companies.forEach((e) => (Companies.addOne(e)));
     }
 
 }
