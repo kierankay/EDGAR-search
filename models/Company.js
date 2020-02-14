@@ -3,22 +3,22 @@ const axios = require('axios');
 const fs = require('fs');
 
 class Companies {
-    
-    static async load(from, to) {
-        let result = await axios.get(from);
+
+    static async load(loadFrom, saveTo) {
+        let result = await axios.get(loadFrom);
         let resultData = result.data
-        if (!fs.existsSync(`to`)) {
-            fs.mkdirSync(`to`, { recursive: false });
+        if (!fs.existsSync(`${saveTo}`)) {
+            fs.mkdirSync(`${saveTo}`, { recursive: false });
         }
-        fs.writeFileSync(`${to}/tickers.txt`, resultData);
+        fs.writeFileSync(`${saveTo}/tickers.txt`, resultData);
     }
 
     static async loadFromFile(filePath) {
-        let companies = fs.readFileSync(filePath, 'utf8').toString().split(/\n/).map(e => ({
+        let companies = fs.readFileSync(`${filePath}/tickers.txt`, 'utf8').toString().split(/\n/).map(e => ({
             'cik': parseInt(e.split(/\s+/)[1]),
             'ticker': e.split(/\s+/)[0]
         }));
-        Companies.add(companies);
+        return companies;
     }
 
     static async add(companies) {
