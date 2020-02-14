@@ -30,22 +30,30 @@ class Companies {
     //
 
     static async getCik(ticker) {
-        let result = await db.query(`
+        try {
+            let result = await db.query(`
         SELECT *
         FROM companies
         WHERE ticker = $1`,
-            [ticker]);
-        let cik = result.rows[0].cik;
-        return cik;
+                [ticker]);
+            let cik = result.rows[0].cik;
+            return cik;
+        } catch (err) {
+            console.log(err.detail);
+        }
     }
 
     static async addOne(company) {
-        let { cik, ticker } = company
-        let result = await db.query(`
+        try {
+            let { cik, ticker } = company
+            let result = await db.query(`
         INSERT INTO companies
         (cik, ticker)
         VALUES ($1, $2)`, [cik, ticker]
-        );
+            );
+        } catch (err) {
+            console.log(err.detail);
+        }
     }
 
 }
