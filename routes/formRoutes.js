@@ -1,5 +1,5 @@
 const express = require('express');
-const Forms = require('../models/Filing');
+const Forms = require('../models/Form');
 const Companies = require('../models/Company');
 const fs = require('fs');
 
@@ -7,7 +7,8 @@ const { baseArchiveUrl,
 	baseXbrlUrl,
 	baseXbrlListSavePath,
 	baseTickerUrl,
-	baseTickerSavePath } = require('../constants');
+	baseTickerSavePath,
+	baseIdxArchiveUrl } = require('../constants');
 
 const router = express.Router();
 
@@ -41,7 +42,7 @@ router.get('/build/tickers', async function (req, res, next) {
 
 router.get('/build/forms', async function (req, res, next) {
 	try {
-		let formListUrls = await Forms.buildFormListUrls(baseArchiveUrl);
+		let formListUrls = await Forms.buildFormListUrls(baseIdxArchiveUrl);
 
 		// build all xbrl lists at ./data/xbrls
 		// await Forms.getFormLists(formListUrls, baseXbrlListSavePath);
