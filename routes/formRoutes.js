@@ -3,11 +3,11 @@ const Forms = require('../models/Filing');
 const Companies = require('../models/Company');
 const fs = require('fs');
 
-let baseArchiveUrl = 'https://www.sec.gov/Archives/edgar/data';
-let baseXbrlUrl = 'https://www.sec.gov/ix?doc=/Archives/edgar/data';
-let baseXbrlListSavePath = './data/xbrls';
-let baseTickerUrl = 'https://www.sec.gov/include/ticker.txt';
-let baseTickerSavePath = './data/tickers';
+const { baseArchiveUrl,
+	baseXbrlUrl,
+	baseXbrlListSavePath,
+	baseTickerUrl,
+	baseTickerSavePath } = require('../constants');
 
 const router = express.Router();
 
@@ -21,14 +21,12 @@ const router = express.Router();
 
 router.get('/build/tickers', async function (req, res, next) {
 	try {
-		let loadFrom = baseTickerUrl;
-		let saveTo = baseTickerSavePath;
 		// fetch tickers from SEC.gov
-		await Companies.load(loadFrom, saveTo);
+		await Companies.load(baseTickerUrl, baseTickerSavePath);
 
 		// parse and load into database
-		let companyFilings = await Companies.loadFromFile(saveTo);
-		await Forms.add(companyFilings);
+		let companies = await Companies.loadFromFile(baseTickerSavePath);
+		await Companies.add(companies);
 		return res.json({ "message": "built tickers" });
 	} catch (err) {
 		next(err);
@@ -48,12 +46,12 @@ router.get('/build/forms', async function (req, res, next) {
 		// build all xbrl lists at ./data/xbrls
 		// await Forms.getFormLists(formListUrls, baseXbrlListSavePath);
 
-		let files = fs.readdirSync(baseDataFolder);
+		let files = fs.readdirSync(baseXbrlListSavePath);
 		for (let formList of files) {
 			let companyForms = await Forms.loadFormList(formList, baseXbrlListSavePath);
 			companyForms.forEach((form) => (Forms.addOne(form)));
 		}
-		return res.json({ "message": "built forms" });
+		return res.json({ "message": "building forms, this will take several minutes" });
 	} catch (err) {
 		next(err)
 	}
