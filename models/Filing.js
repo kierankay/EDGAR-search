@@ -2,9 +2,9 @@ const db = require('../db');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs');
-const timeout = require('../helpers/timeout')
+const timeout = require('../helpers/timeout');
 
-let baseTimeoutMs = 1000;
+let { baseTimeoutMs } = require('../constants');
 
 class Forms {
 
@@ -34,14 +34,14 @@ class Forms {
 
     // Accept a string for the base URL of the EDGAR archive
     // Return the current quarterly xbrl filing link
-    static async getFormListUrl(baseUrl) {
-        let currQtr = Math.ceil(new Date().getMonth() / 4)
+    static async getCurrFormListUrl(baseArchiveUrl) {
+        let currQtr = Math.ceil(new Date().getMonth() / 4);
         let currYear = new Date().getFullYear();
-        let formListUrl = `${baseUrl}${currYear}/QTR${currQtr}/xbrl.idx`
+        let formListUrl = `${baseArchiveUrl}${currYear}/QTR${currQtr}/xbrl.idx`
         return formListUrl;
     }
 
-    // Accept an array of URLs for all historical quarterly lists of xbrl forms
+    // Accept an array of URLs for lists of xbrl forms, and save file path
     // and save those files to the file path
     static async getFormLists(formListUrls, baseXbrlListSavePath) {
         async function checkNextDir(formListUrls) {
@@ -61,13 +61,13 @@ class Forms {
             }
         }
 
-        await checkNextDir(filingURLs);
+        await checkNextDir(formListUrls);
     }
 
     // Accept the file name and path for an index of xbrl forms
     // Return an array of objects containing each form's filing data
-    static async loadFormList(formList, baseXbrlListSavePath) {
-        let companyForms = fs.readFileSync(`${baseXbrlListSavePath}/${formList}`, 'utf8').toString().split(/\n/).map(e => ({
+    static async loadFormList(formListFileName, baseXbrlListSavePath) {
+        let companyForms = fs.readFileSync(`${baseXbrlListSavePath}/${formListFileName}`, 'utf8').toString().split(/\n/).map(e => ({
             'cik': parseInt(e.split('|')[0]),
             'companyName': e.split('|')[1],
             'fileType': e.split('|')[2],
@@ -81,7 +81,7 @@ class Forms {
     // Return a new array of form data with form file names added where found, otherwise null
     static async getFormNames(formsArray, baseArchiveUrl) {
         let unNamedForms = formsArray.slice();
-        let namedForms = await this.getNextFormName(unNamedForms, baseArchiveUrl);
+        let namedForms = await getNextFormName(unNamedForms, baseArchiveUrl);
         return namedForms;
 
         async function getNextFormName(unNamedForms, baseArchiveUrl, namedForms = []) {
@@ -104,40 +104,11 @@ class Forms {
             namedForms.push(formData);
 
             if (unNamedForms.length > 0) {
-                let response = await Forms.getNextFormName(unNamedForms, baseArchiveUrl, namedForms);
+                let response = await getNextFormName(unNamedForms, baseArchiveUrl, namedForms);
                 return response;
             } else {
                 return namedForms;
             }
-        }
-    }
-
-    // Accept an array of form data with missing form file names
-    // Return a new array of form data with form file names added where found, otherwise null
-    static async getNextFormName(unNamedForms, baseArchiveUrl, namedForms = []) {
-        let formData = unNamedForms.pop();
-        let formType = formData.form_type.split(/[-/]/).join('');
-        let formPath = formData.form_file_path;
-        let formName = formData.form_file_name;
-
-        // If a form's file name is null
-        // then fetch it from the server and add it (if found) or null to the form
-        if (formName === null || formName === '{}') {
-            let folderStructure = await Forms.getFormFileDirectory(baseArchiveUrl, formPath);
-            let formFileName = await Forms.findForm(folderStructure, formPath, formType);
-            formData.form_file_name = formFileName;
-            if (unNamedForms.length > 0) {
-                await timeout(baseTimeoutMs);
-            }
-        }
-
-        namedForms.push(formData);
-
-        if (unNamedForms.length > 0) {
-            let response = await this.getNextFormName(unNamedForms, baseArchiveUrl, namedForms);
-            return response;
-        } else {
-            return namedForms;
         }
     }
 
@@ -178,15 +149,16 @@ class Forms {
     // DATABASE INTERACTION METHODS
     //
 
-    static async addOne(file) {
+    static async addOne(form) {
         try {
-            let { cik, formType, date, formPath } = file
+            let { cik, formType, date, formPath } = form
             if (!isNaN(cik)) {
                 let result = await db.query(`
                 INSERT INTO forms
                 (cik, form_type, date_filed, form_file_path)
                 VALUES ($1, $2, $3, $4)`, [cik, formType, date, formPath]
                 );
+                return {'message': `${cik} inserted`};
             }
         } catch (err) {
             console.log(err.detail);
