@@ -64,8 +64,8 @@ class Forms {
         await checkNextDir(filingURLs);
     }
 
-    // Accept a file name
-    // Return an array of objects containing filed SEC form data
+    // Accept the file name and path for an index of xbrl forms
+    // Return an array of objects containing each form's filing data
     static async loadFormList(formList, baseXbrlListSavePath) {
         let companyForms = fs.readFileSync(`${baseXbrlListSavePath}/${formList}`, 'utf8').toString().split(/\n/).map(e => ({
             'cik': parseInt(e.split('|')[0]),
@@ -77,12 +77,39 @@ class Forms {
         return companyForms;
     }
 
-    // Copy an array of forms before mutating it to fetch form file names
-    // Returns the array with form file names included
+    // Accept an array of form data with missing form file names
+    // Return a new array of form data with form file names added where found, otherwise null
     static async getFormNames(formsArray, baseArchiveUrl) {
         let unNamedForms = formsArray.slice();
         let namedForms = await this.getNextFormName(unNamedForms, baseArchiveUrl);
         return namedForms;
+
+        async function getNextFormName(unNamedForms, baseArchiveUrl, namedForms = []) {
+            let formData = unNamedForms.pop();
+            let formType = formData.form_type.split(/[-/]/).join('');
+            let formPath = formData.form_file_path;
+            let formName = formData.form_file_name;
+
+            // If a form's file name is null
+            // then fetch it from the server and add it (if found) or null to the form
+            if (formName === null || formName === '{}') {
+                let folderStructure = await Forms.getFormFileDirectory(baseArchiveUrl, formPath);
+                let formFileName = await Forms.findForm(folderStructure, formPath, formType);
+                formData.form_file_name = formFileName;
+                if (unNamedForms.length > 0) {
+                    await timeout(baseTimeoutMs);
+                }
+            }
+
+            namedForms.push(formData);
+
+            if (unNamedForms.length > 0) {
+                let response = await Forms.getNextFormName(unNamedForms, baseArchiveUrl, namedForms);
+                return response;
+            } else {
+                return namedForms;
+            }
+        }
     }
 
     // Accept an array of form data with missing form file names
@@ -115,7 +142,7 @@ class Forms {
     }
 
     // Accept an array of form data that doesn't include form file names
-    // Synchronously lookup the form's file name, and upate the form's file name to the database
+    // Synchronously lookup the form's file name in EDGAR, and then update it to the database
     static async getAndUpdateFormFileNames(forms, baseUrl) {
         let namedForms = await Forms.getFormNames(forms, baseUrl);
         for (let form of namedForms) {
@@ -123,14 +150,15 @@ class Forms {
         }
     }
 
-    // Fetch the form's directory structure from EDGAR
+    // Accept EDGAR Archive's base URL, and the parent directory of a form
+    // Return the path to the form file's parent directory in EDGAR
     static async getFormFileDirectory(baseArchiveUrl, formPath) {
         let result = await axios.get(`${baseArchiveUrl}${formPath}index.json`);
         return result.data
     }
 
     // Find the form's file name from the directory structure
-    static async findForm(folderStructure, baseArchiveUrl, formType) {
+    static async findForm(folderStructure, formType) {
         let forms = folderStructure.directory.item;
         let url = forms.filter(function (e) {
             let lowerFormType = formType.toLowerCase();
