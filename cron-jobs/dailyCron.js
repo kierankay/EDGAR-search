@@ -1,5 +1,5 @@
 const CronJob = require('cron').CronJob;
-const Form = require('../models/Filing');
+const Form = require('../models/Form');
 const { baseArchiveUrl, baseXbrlListSavePath } = require('../constants');
 const moment = require('moment');
 
