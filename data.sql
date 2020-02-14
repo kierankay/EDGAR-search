@@ -1,4 +1,4 @@
-\c edgar-search 
+\c edgar_search 
 
 DROP TABLE IF EXISTS companies CASCADE;
 DROP TABLE IF EXISTS forms CASCADE;
