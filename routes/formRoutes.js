@@ -51,6 +51,7 @@ router.get('/build/forms', async function (req, res, next) {
 		for (let formList of files) {
 			console.log('LOADING FILE', formList)
 			let companyForms = await Forms.loadFormList(formList, baseXbrlListSavePath);
+			console.log('GOT COMPANY FORMS EX:', companyForms[0], companyForms[20])
 			console.log('WRITING FILE', formList)
 			companyForms.forEach(async function (form) {
 				let resp = await Forms.addOne(form);
