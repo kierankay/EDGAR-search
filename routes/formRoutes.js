@@ -54,7 +54,7 @@ router.get('/build/forms', async function (req, res, next) {
 			console.log('GOT COMPANY FORMS EX:', companyForms[0], companyForms[20])
 			console.log('WRITING FILE', formList)
 			companyForms.forEach(function (form) {
-				let resp = Forms.addOne(form);
+				let resp = await Forms.addOne(form);
 				console.log(resp);
 			});
 		}
