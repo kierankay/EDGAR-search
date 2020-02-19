@@ -1,5 +1,9 @@
 let app = require('./app');
+const dotenv = require('dotenv');
+dotenv.config();
 
-app.listen(3000, function () {
-    console.log('Listening on 3000');
+const { BACKENDPORT } = process.env;
+
+app.listen(BACKENDPORT, function () {
+    console.log(`Listening on ${BACKENDPORT}`);
 })
