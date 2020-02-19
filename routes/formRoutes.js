@@ -42,15 +42,20 @@ router.get('/build/tickers', async function (req, res, next) {
 
 router.get('/build/forms', async function (req, res, next) {
 	try {
-		let formListUrls = await Forms.buildFormListUrls(baseIdxArchiveUrl);
+		let formListUrls = Forms.buildFormListUrls(baseIdxArchiveUrl);
 
 		// build all xbrl lists at ./data/xbrls
 		// await Forms.getFormLists(formListUrls, baseXbrlListSavePath);
 
 		let files = fs.readdirSync(baseXbrlListSavePath);
 		for (let formList of files) {
+			console.log('LOADING FILE', formList)
 			let companyForms = await Forms.loadFormList(formList, baseXbrlListSavePath);
-			companyForms.forEach((form) => (Forms.addOne(form)));
+			console.log('WRITING FILE', formList)
+			companyForms.forEach(async function (form) {
+				let resp = await Forms.addOne(form);
+				console.log(resp);
+			});
 		}
 		return res.json({ "message": "building forms, this will take several minutes" });
 	} catch (err) {
@@ -86,7 +91,7 @@ router.get('/ticker/:ticker', async function (req, res, next) {
 		// get the CIK number from the ticker symbol
 		let cik = await Companies.getCik(ticker);
 		if (cik === undefined) {
-			return res.json({'error': 'not a valid ticker symbol'})
+			return res.json({ 'error': 'not a valid ticker symbol' })
 		}
 		// get the filing from the CIK number
 		let forms = await Forms.getByCik(cik);
