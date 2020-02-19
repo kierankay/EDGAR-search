@@ -14,7 +14,7 @@ class Forms {
 
     // Accept a string for the base URL of the EDGAR archive
     // Return an array of URLs for all historical quarterly lists of xbrl forms
-    static async buildFormListUrls(baseIdxArchiveUrl) {
+    static buildFormListUrls(baseIdxArchiveUrl) {
         let currYear = new Date().getFullYear();
         let urls = [];
 
