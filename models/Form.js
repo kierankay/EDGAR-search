@@ -152,6 +152,7 @@ class Forms {
     static async addOne(form) {
         try {
             let { cik, formType, date, formPath } = form
+            console.log(form);
             if (!isNaN(cik)) {
                 let result = await db.query(`
                 INSERT INTO forms
