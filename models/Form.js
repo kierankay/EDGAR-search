@@ -153,14 +153,12 @@ class Forms {
         try {
             let { cik, formType, date, formPath } = form
             if (!isNaN(cik)) {
-		console.log('GOT TO DB QUERY');
                 let result = await db.query(`
                 INSERT INTO forms
                 (cik, form_type, date_filed, form_file_path)
                 VALUES ($1, $2, $3, $4)
-		RETURNING cik`, [cik, formType, date, formPath]
+		        RETURNING cik`, [cik, formType, date, formPath]
                 );
-		console.log('FINISHED DB QUERY', result.rows[0]);
                 return result.rows[0];
             }
         } catch (err) {
