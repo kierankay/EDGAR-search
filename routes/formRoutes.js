@@ -48,13 +48,25 @@ router.get('/build/forms', async function (req, res, next) {
 		// await Forms.getFormLists(formListUrls, baseXbrlListSavePath);
 
 		let files = fs.readdirSync(baseXbrlListSavePath);
-		for (let formList of files) {
-			let companyForms = await Forms.loadFormList(formList, baseXbrlListSavePath);
-			companyForms.forEach(async function (form) {
-				let resp = await Forms.addOne(form);
-				console.log('RESPONSE IS', resp);
-			});
+
+		async function syncFileDump(files) {
+			let currFile = files.shift();
+			let companyForms = await Forms.loadFormList(currFile, baseXbrlListSavePath);
+			let responses = [];
+			companyForms.forEach(function(form) {
+				let resp = Forms.addOne(form);
+				responses.push(resp);
+			})
+
+			await Promise.all(responses);
+
+			if (files.length > 0) {
+				syncFileDump(files);
+			}
 		}
+
+		syncFileDump(files);
+
 		return res.json({ "message": "building forms, this will take several minutes" });
 	} catch (err) {
 		next(err)
