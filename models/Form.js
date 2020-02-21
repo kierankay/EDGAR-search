@@ -43,7 +43,7 @@ class Forms {
   // Accept an array of URLs for lists of xbrl forms, and save file path
   // and save those files to the file path
   static async getFormLists(formListUrls, baseXbrlListSavePath) {
-    const checkNextDir = async (formListUrls) => {
+    async function checkNextDir(formListUrls) {
       const formUrl = formListUrls.pop();
       const formDataObj = await axios.get(formUrl);
       const formData = formDataObj.data;
@@ -58,7 +58,7 @@ class Forms {
       if (formListUrls.length > 0) {
         await checkNextDir(formListUrls);
       }
-    };
+    }
 
     await checkNextDir(formListUrls);
   }
@@ -95,7 +95,7 @@ class Forms {
   static async getFormNames(formsArray, baseArchiveUrl) {
     const unNamedForms = formsArray.slice();
 
-    const getNextFormName = async (unNamedForms, baseArchiveUrl, namedForms = []) => {
+    async function getNextFormName (unNamedForms, baseArchiveUrl, namedForms = []) {
       const formData = unNamedForms.pop();
       const formType = formData.form_type.split(/[-/]/).join('');
       const formPath = formData.form_file_path;
@@ -119,7 +119,7 @@ class Forms {
         return response;
       }
       return namedForms;
-    };
+    }
 
     const namedForms = await getNextFormName(unNamedForms, baseArchiveUrl);
     return namedForms;
