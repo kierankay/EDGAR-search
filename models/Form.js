@@ -43,7 +43,7 @@ class Forms {
   // Accept an array of URLs for lists of xbrl forms, and save file path
   // and save those files to the file path
   static async getFormLists(formListUrls, baseXbrlListSavePath) {
-    async function checkNextDir(formListUrls) {
+    const checkNextDir = async (formListUrls) => {
       const formUrl = formListUrls.pop();
       const formDataObj = await axios.get(formUrl);
       const formData = formDataObj.data;
@@ -58,7 +58,7 @@ class Forms {
       if (formListUrls.length > 0) {
         await checkNextDir(formListUrls);
       }
-    }
+    };
 
     await checkNextDir(formListUrls);
   }
@@ -67,21 +67,26 @@ class Forms {
   // Return an array of objects containing each form's filing data
 
   static async loadFormList(formListFileName, baseXbrlListSavePath) {
-    const companyForms = fs.readFileSync(`${baseXbrlListSavePath}/${formListFileName}`, 'utf8').toString().split(/\n/).map((e) => ({
-      cik: parseInt(e.split('|')[0], 10),
-      companyName: e.split('|')[1],
-      formType: e.split('|')[2],
-      date: e.split('|')[3],
-      formPath: e.split('|')[4] ? e.split('|')[4].split(/[/|\-|.]/).reduce((r, el, i) => {
-        if (i === 2 || i === 5) {
-          return `${r + el} + /`;
-        }
-        if (i === 3 || i === 4) {
-          return r + el;
-        }
-        return `${r} + /`;
-      }) : 0,
-    }));
+    const companyForms = fs.readFileSync(`${baseXbrlListSavePath}/${formListFileName}`, 'utf8')
+      .toString()
+      .split(/\n/)
+      .map((e) => ({
+        cik: parseInt(e.split('|')[0], 10),
+        companyName: e.split('|')[1],
+        formType: e.split('|')[2],
+        date: e.split('|')[3],
+        formPath: e.split('|')[4]
+          ? e.split('|')[4].split(/[/|\-|.]/).reduce((r, el, i) => {
+            if (i === 2 || i === 5) {
+              return `${r + el} + /`;
+            }
+            if (i === 3 || i === 4) {
+              return r + el;
+            }
+            return `${r} + /`;
+          })
+          : 0,
+      }));
     return companyForms;
   }
 
@@ -90,7 +95,7 @@ class Forms {
   static async getFormNames(formsArray, baseArchiveUrl) {
     const unNamedForms = formsArray.slice();
 
-    async function getNextFormName(unNamedForms, baseArchiveUrl, namedForms = []) {
+    const getNextFormName = async (unNamedForms, baseArchiveUrl, namedForms = []) => {
       const formData = unNamedForms.pop();
       const formType = formData.form_type.split(/[-/]/).join('');
       const formPath = formData.form_file_path;
@@ -114,7 +119,7 @@ class Forms {
         return response;
       }
       return namedForms;
-    }
+    };
 
     const namedForms = await getNextFormName(unNamedForms, baseArchiveUrl);
     return namedForms;
@@ -227,31 +232,22 @@ class Forms {
     const searchHtmlBody = searchResult.data;
     const $s = cheerio.load(searchHtmlBody);
     const filingTable = $s('.tableFile2').children().children();
-    const filings = filingTable.map((i, e) => ({
-      filing: $s(e).children().html().trim(),
-      link: decodeURI($s(e).children().nextAll().html()
-        .trim()
-        .split(/"/)[1]),
-      description: $s(e).children().nextAll().nextAll()
-        .text()
-        .trim()
-        .split(/\s{2,}/)[0],
-      filing_date: $s(e).children().nextAll().nextAll()
-        .nextAll()
-        .html()
-        .trim(),
-      file_film_link: decodeURI($s(e).children().nextAll().nextAll()
-        .nextAll()
-        .nextAll()
-        .html()
-        .trim()
-        .split(/"/)[1]),
-      file_film_number: $s(e).children().nextAll().nextAll()
-        .nextAll()
-        .nextAll()
-        .text()
-        .trim(),
-    })).get();
+    const filings = filingTable.map((i, e) => {
+      const filingData = $s(e).children();
+      const linkData = filingData.nextAll();
+      const descriptionData = linkData.nextAll();
+      const filingDateData = descriptionData.nextAll();
+      const fileFilmData = filingDateData.nextAll();
+
+      return {
+        filing: filingData.html().trim(),
+        link: decodeURI(linkData.html().trim().split(/"/)[1]),
+        description: descriptionData.text().trim().split(/\s{2,}/)[0],
+        filing_date: filingDateData.html().trim(),
+        file_film_link: decodeURI(fileFilmData.html().trim().split(/"/)[1]),
+        file_film_number: fileFilmData.text().trim(),
+      };
+    }).get();
     return filings;
   }
 }

@@ -13,10 +13,13 @@ class Companies {
   }
 
   static async loadFromFile(filePath) {
-    const companies = fs.readFileSync(`${filePath}/tickers.txt`, 'utf8').toString().split(/\n/).map((e) => ({
-      cik: parseInt(e.split(/\s+/)[1], 10),
-      ticker: e.split(/\s+/)[0],
-    }));
+    const companies = fs.readFileSync(`${filePath}/tickers.txt`, 'utf8')
+      .toString()
+      .split(/\n/)
+      .map((e) => ({
+        cik: parseInt(e.split(/\s+/)[1], 10),
+        ticker: e.split(/\s+/)[0],
+      }));
     return companies;
   }
 
